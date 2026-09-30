@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PDF Studio – Markup, Redact, Crop</title>
+<meta name="description" content="Markup, redact and crop PDFs privately in your browser. Files never leave your device.">
+<meta name="theme-color" content="#2f5bea">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%93%84%3C/text%3E%3C/svg%3E">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f4f5f7;--panel:#fff;--ink:#1c1f24;--mute:#6a7280;--line:#dfe2e8;--acc:#2f5bea;--acc-ink:#fff;--danger:#111}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15171b;--panel:#1e2126;--ink:#e9ebef;--mute:#98a0ad;--line:#333842;--acc:#5b82ff;--acc-ink:#0c1020;--danger:#000}}
+:root[data-theme="dark"]{--bg:#15171b;--panel:#1e2126;--ink:#e9ebef;--mute:#98a0ad;--line:#333842;--acc:#5b82ff;--acc-ink:#0c1020;--danger:#000}
+@supports (height:100dvh){html,body{height:100dvh}}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;height:100%;display:flex;flex-direction:column;overflow:hidden;-webkit-text-size-adjust:100%}
+header{flex:none;z-index:5;background:var(--panel);border-bottom:1px solid var(--line);padding:8px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.grp{white-space:nowrap;display:flex;gap:4px;align-items:center;padding-right:8px;border-right:1px solid var(--line)}
+button,.btn{font:inherit;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer}
+button:hover,.btn:hover{background:var(--bg)}
+button.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+button:disabled{opacity:.4;cursor:default}
+.primary{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.primary:hover{background:var(--acc);opacity:.9}
+.mute{color:var(--mute);font-size:13px}
+#opts{display:flex;gap:10px;align-items:center;padding:6px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
+#sw{display:flex;gap:6px}
+.swt{width:22px;height:22px;padding:0;border-radius:50%;border:2px solid var(--line)}
+.swt.sel{outline:2px solid var(--acc);outline-offset:2px}
+#bl{display:flex;gap:6px;align-items:center}
+#bs,#fs{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:3px 6px}
+#szl,#opl{display:flex;gap:6px;align-items:center}
+#hint{flex:none;padding:6px 12px;background:var(--panel);border-bottom:1px solid var(--line);color:var(--mute);font-size:12.5px}
+#stage{flex:1;min-height:0;overflow:auto;padding:12px;display:block;-webkit-overflow-scrolling:touch}
+#wrap{position:relative;box-shadow:0 2px 14px rgba(0,0,0,.25);background:#fff;display:none;touch-action:none;width:max-content;margin:0 auto;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#wrap canvas{display:block}
+#ov{position:absolute;inset:0;cursor:crosshair}
+#drop{max-width:560px;margin:12vh auto 0;text-align:center;border:2px dashed var(--line);border-radius:16px;padding:44px 24px;background:var(--panel)}
+#drop.hot{border-color:var(--acc)}
+#drop h1{font-size:20px;margin:0 0 8px}
+#guide{text-align:left;margin:20px 0 0;padding-top:16px;border-top:1px solid var(--line);display:grid;grid-template-columns:auto 1fr;gap:8px 14px;font-size:13px}
+#guide dt{font-weight:600;white-space:nowrap}
+#guide dd{margin:0;color:var(--mute)}
+#note{flex:none;max-width:760px;margin:0 auto;padding:0 16px 24px;color:var(--mute);font-size:12.5px;text-align:center}
+#ti{position:absolute;z-index:3;font:inherit;border:1px solid var(--acc);background:#fff;color:#c00;padding:2px 4px;border-radius:4px}
+.dlg{padding:0;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--ink);width:min(680px,94vw);max-height:88vh;overflow:hidden}
+.dlg[open]{display:flex;flex-direction:column}
+.dlg::backdrop{background:rgba(0,0,0,.45)}
+.dlg .hd{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-bottom:1px solid var(--line)}
+.dlg h2{margin:0;font-size:18px}
+.dlg .hb{overflow:auto;padding:4px 18px 18px;-webkit-overflow-scrolling:touch}
+.dlg h3{font-size:14px;margin:18px 0 8px;text-transform:uppercase;letter-spacing:.04em;color:var(--mute)}
+.dlg dl{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;margin:0;font-size:13.5px}
+.dlg dt{font-weight:600;white-space:nowrap}
+.dlg dd{margin:0}
+.dlg ul{margin:0;padding-left:18px;font-size:13.5px}
+.dlg li{margin:4px 0}
+.dlg kbd{font:12px ui-monospace,Menlo,Consolas,monospace;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:0 5px;background:var(--bg)}
+@media (max-width:520px){.dlg dl{grid-template-columns:1fr;gap:2px}.dlg dd{margin-bottom:8px}}
+.frm{display:grid;gap:12px;padding-top:14px}
+.frm label{display:grid;gap:4px;font-size:13px;color:var(--mute)}
+.frm select{font:inherit;font-size:14px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px}
+.frm p{margin:0}
+#ov{touch-action:none}
+#wrap.selm #ov{cursor:default}
+#wrap.pan,#wrap.pan #ov{touch-action:pan-x pan-y;cursor:grab}
+button,.btn,select{touch-action:manipulation}
+@media (pointer:coarse){
+ button,.btn{min-height:44px;min-width:44px;padding:8px 12px}
+ .swt{width:34px;height:34px;min-width:0;min-height:0}
+ #bs,#fs,#ti{font-size:16px}#bs,#fs{min-height:40px}
+ input[type=range]{width:120px;height:32px}
+}
+@media (max-width:900px){
+ header,#opts{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+ .grp,#opts>*{flex:none}
+ #status,#note{display:none}
+ #xg{position:sticky;right:0;background:var(--panel);padding-left:8px;border-left:1px solid var(--line);margin-left:auto}
+ #drop{margin-top:6vh;padding:32px 18px}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="grp"><label class="btn" for="file">Open PDF</label><input id="file" type="file" accept="application/pdf" hidden><input id="imgf" type="file" accept="image/*" hidden><button id="help" title="How to use each tool">Help</button></div>
+  <div class="grp" id="tools">
+    <button data-t="pan" title="Move / scroll the page">Move</button>
+    <button data-t="sel" title="Select, move, resize or delete marks">Select</button>
+    <button data-t="hl" class="on" title="Highlight box">Highlight</button>
+    <button data-t="mk" title="Freehand marker">Marker</button>
+    <button data-t="pen" title="Freehand pen">Pen</button>
+    <button data-t="shp" title="Arrows, lines, boxes and ellipses">Shapes</button>
+    <button data-t="txt" title="Add text">Text</button>
+    <button data-t="img" id="imgb" disabled title="Add a picture (PNG, JPG, WebP, GIF)">Image</button>
+    <button data-t="rd" title="Redact (permanent)">Redact</button>
+    <button data-t="crop" title="Crop page">Crop</button>
+  </div>
+  <div class="grp"><button id="undo" disabled>Undo</button><button id="del" disabled title="Delete selected mark">Delete</button><button id="rot" disabled title="Rotate the selected picture or shape 90°">Rotate 90°</button><button id="clrcrop" disabled>Reset crop</button></div>
+  <div class="grp"><button id="prev" disabled>&#8592;</button><span id="pn" class="mute">–</span><button id="next" disabled>&#8594;</button></div>
+  <div class="grp"><button id="zo" title="Zoom out">&#8722;</button><span id="zv" class="mute">100%</span><button id="zi" title="Zoom in">+</button><button id="zf" title="Fit to width">Fit</button></div>
+  <div class="grp"><label class="mute" title="Off: crops only hide the outside area. On: cropped pages become images and everything outside the crop is permanently deleted."><input type="checkbox" id="fc"> Flatten crops</label></div>
+  <div class="grp"><button id="ie" disabled title="Save pages as PNG or JPG">Export as image</button></div>
+  <div class="grp" id="xg"><button id="exp" class="primary" disabled>Export PDF</button></div>
+  <span id="status" class="mute"></span>
+</header>
+<div id="opts"><span class="mute" id="ol"></span><label class="mute" id="bl">Brush <select id="bs"></select></label><label class="mute" id="snl" style="display:none;gap:6px;align-items:center" title="Snap lines to 45° and boxes/ellipses to squares/circles (or hold Shift)"><input type="checkbox" id="sn"> Snap</label><label class="mute" id="fil" style="display:none;gap:6px;align-items:center"><input type="checkbox" id="fi"> Fill</label><span id="fl" style="display:none;gap:6px;align-items:center"><label class="mute">Font <select id="fs"></select></label><button id="bd" title="Bold"><b>B</b></button><button id="it" title="Italic"><i>I</i></button></span><span id="sw"></span><label class="mute" id="szl">Size <input type="range" id="sz"> <span id="szv"></span></label><label class="mute" id="opl">Opacity <input type="range" id="op" min="10" max="100" step="5"> <span id="opv"></span>%</label></div>
+<div id="hint" style="display:none"></div>
+<div id="stage">
+  <div id="drop"><h1>Markup, redact &amp; crop PDFs</h1><p class="mute">Drop a PDF here or use “Open PDF”. Everything happens in your browser; your file is never uploaded. Need more detail? Click <b>Help</b>.</p>
+    <dl id="guide">
+      <dt>Move</dt><dd>Scroll and pan the page without marking it (handy on touchscreens).</dd>
+      <dt>Select</dt><dd>Click a mark to select it. Drag to move it, drag a handle to resize it, or press Delete to remove it. Pictures and shapes also have a round handle to rotate them.</dd>
+      <dt>Highlight</dt><dd>Drag a box to add a see-through color highlight.</dd>
+      <dt>Marker</dt><dd>Freehand highlighter stroke, with several tip styles.</dd>
+      <dt>Pen</dt><dd>Freehand drawing in any color, size and brush style.</dd>
+      <dt>Shapes</dt><dd>Drag to draw an arrow, line, box or ellipse. Pick the shape from the dropdown; boxes and ellipses can be filled. Hold Shift (or tick Snap) for 45° lines and perfect squares or circles.</dd>
+      <dt>Text</dt><dd>Click or tap where you want text, type, then press Enter.</dd>
+      <dt>Image</dt><dd>Choose a picture (or paste / drop one) and it appears on the page, ready to drag into position, resize and rotate.</dd>
+      <dt>Redact</dt><dd>Drag a solid black box. On export, the page becomes an image so the text underneath is permanently removed.</dd>
+      <dt>Crop</dt><dd>Drag around the area to keep. Then see “Flatten crops” below.</dd>
+      <dt>Flatten crops</dt><dd>Checkbox next to Export. Off: a crop only hides the outside area, and the hidden content is still inside the file. On: cropped pages are exported as images and everything outside the crop is permanently deleted (text on those pages can no longer be selected).</dd>
+    </dl>
+  </div>
+  <div id="wrap"><canvas id="pdf"></canvas><canvas id="ov"></canvas></div>
+</div>
+<div id="note">Pages with markup or redactions are exported as flattened images, so redacted text is truly removed. Untouched pages keep their selectable text. Cropping only hides the outside area unless “Flatten crops” is ticked.</div>
+
+<dialog id="helpd" class="dlg" aria-labelledby="helpt">
+  <div class="hd"><h2 id="helpt">How to use PDF Studio</h2><button id="hx">Close</button></div>
+  <div class="hb">
+    <h3>Getting started</h3>
+    <ul>
+      <li>Click <b>Open PDF</b> or drop a file on the page. Your PDF is processed in your browser and never uploaded.</li>
+      <li>Change pages with the arrow buttons (or the <kbd>←</kbd> <kbd>→</kbd> keys). Marks belong to the page you drew them on.</li>
+      <li>Zoom with <b>−</b> / <b>+</b> / <b>Fit</b>, by pinching with two fingers, or with <kbd>Ctrl</kbd> + mouse wheel. Zoom in for precise work like redaction boxes.</li>
+      <li>When you're done, click <b>Export PDF</b> (or <b>Export as image</b>). The original file is never changed.</li>
+    </ul>
+    <h3>Tools</h3>
+    <dl>
+      <dt>Move</dt><dd>Scrolls and pans the page without marking it. Handy on touchscreens, where one finger normally draws.</dd>
+      <dt>Select</dt><dd>Click a mark to select it (dashed outline). Drag it to move it. Drag a square handle to resize shapes, highlights, redaction boxes and pictures. Boxes and ellipses also have side handles that stretch in one direction, and lines and arrows have a handle on each end. Hold <kbd>Shift</kbd> on a corner to keep proportions. Shapes and pictures have a round handle to rotate them (<kbd>Shift</kbd> = 15° steps), and the <b>Rotate 90°</b> button turns them a quarter turn. Press <kbd>Delete</kbd> or use the Delete button to remove a mark. Pen strokes, marker strokes and text can be moved but not resized or rotated.</dd>
+      <dt>Highlight</dt><dd>Drag a box to add a see-through color highlight. Choose color and opacity in the options bar.</dd>
+      <dt>Marker</dt><dd>Draw a freehand highlighter stroke. Options: color, size, opacity and tip (Chisel, Round, Soft, Square).</dd>
+      <dt>Pen</dt><dd>Draw freehand. Options: color, size, opacity and style (Round, Calligraphy, Dashed, Dotted).</dd>
+      <dt>Shapes</dt><dd>Drag to draw an Arrow, Line, Box or Ellipse; pick the shape from the dropdown. Boxes and ellipses can be Filled. Hold <kbd>Shift</kbd> (or tick <b>Snap</b>) for 45° lines and perfect squares or circles. To move, resize or rotate a shape afterward, use the Select tool.</dd>
+      <dt>Text</dt><dd>Click or tap where you want the text, type, then press <kbd>Enter</kbd> (or click elsewhere) to place it. <kbd>Esc</kbd> cancels. Choose font, bold, italic, color and size first.</dd>
+      <dt>Image</dt><dd>Click <b>Image</b> and choose a picture (PNG, JPG, WebP or GIF), or paste one with <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>V</kbd>, or drop one onto the page. It appears in the middle of your view and is selected: drag it to move it, drag a corner handle to resize it (proportions stay locked), drag the round handle above it to rotate it (hold <kbd>Shift</kbd> for 15° steps) or click <b>Rotate 90°</b>, and press <kbd>Delete</kbd> to remove it. Transparent PNGs keep their transparency. Pages with images are exported as flattened images, like other marks.</dd>
+      <dt>Redact</dt><dd>Drag a solid black box over anything you want to hide. When you export, pages with redactions are turned into images, so the text underneath is permanently removed, not just covered.</dd>
+      <dt>Crop</dt><dd>Drag around the area you want to keep. Each page has its own crop; drag again to replace it, or use Reset crop. Nothing is cut until you export.</dd>
+    </dl>
+    <h3>Undo and deleting</h3>
+    <ul>
+      <li><b>Undo</b> (or <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Z</kbd>) reverses your last change on any page, including moves, resizes, deletes and crops.</li>
+      <li><b>Reset crop</b> removes the crop from the current page.</li>
+    </ul>
+    <h3>Exporting</h3>
+    <ul>
+      <li>Pages with marks or redactions are saved as flattened images. That is what makes redactions permanent, but the text on those pages can no longer be selected.</li>
+      <li>Pages you didn't mark keep their selectable text.</li>
+      <li><b>Flatten crops</b> (checkbox next to Export): <b>off</b> = a crop only hides the outside area, and the hidden content is still inside the file; <b>on</b> = cropped pages become images and everything outside the crop is permanently deleted.</li>
+      <li><b>Export as image</b> saves the current page, or every page in a ZIP file, as PNG or JPG at 72, 144 or 216 dpi. Marks, redactions and crops are included.</li>
+      <li>For anything sensitive, use Redact, and check the exported file before sharing it.</li>
+    </ul>
+    <h3>Touchscreens</h3>
+    <ul>
+      <li>Draw with one finger. Use two fingers to pinch-zoom and pan, or switch to <b>Move</b> to scroll with one finger.</li>
+      <li>To rotate a picture or shape on a touchscreen, drag its round handle or use the <b>Rotate 90°</b> button.</li>
+      <li>The toolbar scrolls sideways on small screens; <b>Export PDF</b> stays pinned on the right.</li>
+    </ul>
+  </div>
+</dialog>
+<dialog id="imgd" class="dlg" aria-labelledby="imgt">
+  <div class="hd"><h2 id="imgt">Export as image</h2><button id="ix">Close</button></div>
+  <div class="hb"><div class="frm">
+    <label>Format <select id="if"><option value="png">PNG (sharp, larger files)</option><option value="jpg">JPG (smaller files)</option></select></label>
+    <label id="iql" style="display:none">JPG quality <select id="iq"><option value="0.92">High</option><option value="0.8">Medium</option><option value="0.6">Low (smallest)</option></select></label>
+    <label>Pages <select id="ip"><option value="cur">Current page</option><option value="all">All pages (ZIP)</option></select></label>
+    <label>Size <select id="is"><option value="1">Small (72 dpi)</option><option value="2" selected>Standard (144 dpi)</option><option value="3">High (216 dpi)</option></select></label>
+    <p class="mute">Your marks, redactions and crops are included. Several pages are saved together as one ZIP file.</p>
+    <button id="ig" class="primary">Export</button>
+  </div></div>
+</dialog>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script>
+'use strict';
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const $=id=>document.getElementById(id);
+const pdfC=$('pdf'),ov=$('ov'),wrap=$('wrap'),stage=$('stage');
+
+/* ---------- state ---------- */
+let srcFile=null,doc=null,name='document.pdf',pg=1,tool='hl',edits={},hist=[],live=null,busy=false;
+let z=1,ptrs=new Map(),pinch=null,zBusy=false,zPend=null,lastW=0,showTok=0,raf=0,start=null,task=null,sel=null,drag=null,IMGS={},imgSeq=0;
+const E=n=>edits[n]||(edits[n]={marks:[],crop:null});   // per-page marks + crop (all coords normalised 0..1)
+const push=(n,f)=>hist.push({n,f});                     // undo stack
+
+/* ---------- drawing (shared by on-screen overlay and export) ---------- */
+const FONTS={sans:["Sans","Helvetica, Arial, sans-serif"],serif:["Serif","Georgia, 'Times New Roman', serif"],mono:["Mono","'Courier New', monospace"],hand:["Handwriting","'Segoe Script', 'Bradley Hand', 'Comic Sans MS', cursive"]};
+const fontStr=(m,px)=>`${m.it?'italic ':''}${m.bd?'bold ':''}${px}px ${(FONTS[m.f]||FONTS.sans)[1]}`;
+function drawMark(ctx,W,H,m){
+  ctx.save();
+  if(m.t==='hl'){ctx.globalAlpha=m.a??.4;ctx.fillStyle=m.c||'#ffd600';ctx.fillRect(m.x*W,m.y*H,m.w*W,m.h*H)}
+  else if(m.t==='rd'){ctx.fillStyle='#000';ctx.fillRect(m.x*W,m.y*H,m.w*W,m.h*H)}
+  else if(m.t==='pen'||m.t==='mk')brush(ctx,W,H,m);
+  else if(m.t==='shp')shape(ctx,W,H,m);
+  else if(m.t==='img'){const im=IMGS[m.id];if(im){ctx.globalAlpha=m.a??1;ctx.imageSmoothingQuality='high';const w=m.w*W,h=m.h*H;ctx.translate((m.x+m.w/2)*W,(m.y+m.h/2)*H);ctx.rotate(m.rot||0);ctx.drawImage(im,-w/2,-h/2,w,h)}}
+  else if(m.t==='txt'){ctx.fillStyle=m.c||'#d01010';ctx.font=fontStr(m,(m.w||.028)*W);ctx.textBaseline='top';ctx.fillText(m.s,m.x*W,m.y*H)}
+  ctx.restore();
+}
+function shape(ctx,W,H,m){
+  const x0=m.x0*W,y0=m.y0*H,x1=m.x1*W,y1=m.y1*H,lw=Math.max(1,m.w*W);
+  ctx.globalAlpha=m.a??1;ctx.strokeStyle=ctx.fillStyle=m.c||'#e02020';ctx.lineWidth=lw;ctx.lineJoin='round';ctx.lineCap='round';
+  if(m.k==='box'||m.k==='ellipse'){
+    const w=Math.abs(x1-x0),h=Math.abs(y1-y0);ctx.beginPath();ctx.translate((x0+x1)/2,(y0+y1)/2);ctx.rotate(m.rot||0);
+    if(m.k==='box')ctx.rect(-w/2,-h/2,w,h);else ctx.ellipse(0,0,w/2,h/2,0,0,Math.PI*2);
+    m.fill?ctx.fill():ctx.stroke();return}
+  const a=Math.atan2(y1-y0,x1-x0),hl=Math.max(lw*5,W*.03),len=Math.hypot(x1-x0,y1-y0),arrow=m.k==='arrow'&&len>hl*.5,bx=x1-Math.cos(a)*hl*.8,by=y1-Math.sin(a)*hl*.8;
+  ctx.beginPath();ctx.moveTo(x0,y0);arrow?ctx.lineTo(bx,by):ctx.lineTo(x1,y1);ctx.stroke();
+  if(arrow){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x1-Math.cos(a-.42)*hl,y1-Math.sin(a-.42)*hl);ctx.lineTo(x1-Math.cos(a+.42)*hl,y1-Math.sin(a+.42)*hl);ctx.closePath();ctx.fill()}
+}
+function brush(ctx,W,H,m){
+  const mk=m.t==='mk',b=m.b||(mk?'flat':'round'),lw=Math.max(1,(m.w||.004)*W),P=m.p.map(q=>[q[0]*W,q[1]*H]);
+  ctx.globalAlpha=m.a??(mk?.4:1);ctx.strokeStyle=ctx.fillStyle=m.c||'#e02020';
+  if(b==='calli'||b==='chisel'){   // angled flat nib: sweep a slanted line, fill the union once so opacity stays even
+    const a=-Math.PI/4,len=b==='calli'?lw*3:lw,dx=Math.cos(a)*len/2,dy=Math.sin(a)*len/2;ctx.beginPath();
+    for(let i=1;i<P.length;i++){const[x0,y0]=P[i-1],[x1,y1]=P[i],o=(x1-x0)*dy-(y1-y0)*dx>=0;
+      const q=[[x0+dx,y0+dy],[x1+dx,y1+dy],[x1-dx,y1-dy],[x0-dx,y0-dy]];if(!o)q.reverse();
+      q.forEach((c,j)=>j?ctx.lineTo(c[0],c[1]):ctx.moveTo(c[0],c[1]));ctx.closePath()}
+    ctx.fill();return}
+  ctx.lineWidth=b==='soft'?lw*.6:lw;ctx.lineJoin='round';ctx.lineCap=b==='flat'?'square':'round';
+  if(b==='dash')ctx.setLineDash([lw*3,lw*2]);
+  if(b==='dot')ctx.setLineDash([0,lw*2.2]);
+  if(b==='soft'){ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=lw*.7}
+  ctx.beginPath();P.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.stroke();
+}
+function bbox(m){   // normalised bounding box of any mark
+  const W=ov.width,H=ov.height;
+  if(m.t==='hl'||m.t==='rd'||m.t==='img')return{x:m.x,y:m.y,w:m.w,h:m.h};
+  if(m.t==='shp')return{x:Math.min(m.x0,m.x1),y:Math.min(m.y0,m.y1),w:Math.abs(m.x1-m.x0),h:Math.abs(m.y1-m.y0)};
+  if(m.t==='txt'){const c=ov.getContext('2d'),px=(m.w||.028)*W;c.save();c.font=fontStr(m,px);const tw=c.measureText(m.s).width;c.restore();return{x:m.x,y:m.y,w:tw/W,h:px*1.2/H}}
+  const xs=m.p.map(q=>q[0]),ys=m.p.map(q=>q[1]),x=Math.min(...xs),y=Math.min(...ys);
+  return{x,y,w:Math.max(...xs)-x,h:Math.max(...ys)-y};
+}
+const isLine=m=>m.t==='shp'&&(m.k==='line'||m.k==='arrow');
+const isBoxShp=m=>m.t==='shp'&&(m.k==='box'||m.k==='ellipse');
+const rotable=m=>m.t==='img'||isBoxShp(m);   // marks that rotate about their centre
+function rect(m){return m.t==='shp'?{x:Math.min(m.x0,m.x1),y:Math.min(m.y0,m.y1),w:Math.abs(m.x1-m.x0),h:Math.abs(m.y1-m.y0)}:{x:m.x,y:m.y,w:m.w,h:m.h}}
+function setRect(m,x,y,w,h){if(m.t==='shp'){m.x0=x;m.y0=y;m.x1=x+w;m.y1=y+h}else{m.x=x;m.y=y;m.w=w;m.h=h}}
+function restoreMark(m,s0){for(const k in m)if(!(k in s0))delete m[k];Object.assign(m,s0)}
+function imgPt(m,lx,ly){   // mark-local offset (backing px from its centre) -> normalised page coords, honouring rotation
+  const R=rect(m),W=ov.width,H=ov.height,th=m.rot||0,c=Math.cos(th),s=Math.sin(th);
+  return{x:((R.x+R.w/2)*W+c*lx-s*ly)/W,y:((R.y+R.h/2)*H+s*lx+c*ly)/H};
+}
+function handles(m){
+  const W=ov.width,H=ov.height,k=W/ov.getBoundingClientRect().width;
+  if(rotable(m)){const R=rect(m),w=R.w*W/2,h=R.h*H/2,o=[{id:'nw',...imgPt(m,-w,-h)},{id:'ne',...imgPt(m,w,-h)},{id:'sw',...imgPt(m,-w,h)},{id:'se',...imgPt(m,w,h)}];
+    if(m.t==='shp')o.push({id:'n',...imgPt(m,0,-h)},{id:'e',...imgPt(m,w,0)},{id:'s',...imgPt(m,0,h)},{id:'w',...imgPt(m,-w,0)});   // side handles stretch one direction (pictures keep proportions)
+    o.push({id:'rot',...imgPt(m,0,-h-28*k)});return o}
+  if(isLine(m)){const ax=m.x0*W,ay=m.y0*H,bx=m.x1*W,by=m.y1*H,L=Math.hypot(bx-ax,by-ay)||1,o=[{id:'a',x:m.x0,y:m.y0},{id:'b',x:m.x1,y:m.y1}];
+    o.push({id:'rot',x:((ax+bx)/2+(by-ay)/L*30*k)/W,y:((ay+by)/2-(bx-ax)/L*30*k)/H});return o}
+  if(m.t==='hl'||m.t==='rd'){const b=bbox(m);return[{id:'nw',x:b.x,y:b.y},{id:'ne',x:b.x+b.w,y:b.y},{id:'sw',x:b.x,y:b.y+b.h},{id:'se',x:b.x+b.w,y:b.y+b.h}]}
+  return[];   // text and freehand strokes can be moved but not resized
+}
+function hitMark(m,q){
+  const r=ov.getBoundingClientRect(),px=q[0]*r.width,py=q[1]*r.height,tol=10;
+  if(rotable(m)){   // test in the mark's own (unrotated) frame
+    const R=rect(m),th=m.rot||0,c=Math.cos(th),s=Math.sin(th),dx=px-(R.x+R.w/2)*r.width,dy=py-(R.y+R.h/2)*r.height,lx=c*dx+s*dy,ly=-s*dx+c*dy;
+    return Math.abs(lx)<=R.w*r.width/2+tol&&Math.abs(ly)<=R.h*r.height/2+tol}
+  if(isLine(m)){
+    const ax=m.x0*r.width,ay=m.y0*r.height,dx=m.x1*r.width-ax,dy=m.y1*r.height-ay,t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy||1)));
+    return Math.hypot(px-(ax+t*dx),py-(ay+t*dy))<=tol+m.w*r.width/2}
+  const b=bbox(m);
+  return px>=b.x*r.width-tol&&px<=(b.x+b.w)*r.width+tol&&py>=b.y*r.height-tol&&py<=(b.y+b.h)*r.height+tol;
+}
+function translate(m,dx,dy){
+  if(m.t==='hl'||m.t==='rd'||m.t==='txt'||m.t==='img'){m.x+=dx;m.y+=dy}
+  else if(m.t==='shp'){m.x0+=dx;m.x1+=dx;m.y0+=dy;m.y1+=dy}
+  else m.p=m.p.map(q=>[q[0]+dx,q[1]+dy]);
+}
+function snapPt(x0,y0,q,box){   // constrain a drag: 45° steps for lines, equal sides for boxes/ellipses
+  const W=ov.width,H=ov.height,dx=(q[0]-x0)*W,dy=(q[1]-y0)*H;let p;
+  if(box){const s=Math.max(Math.abs(dx),Math.abs(dy));p=[x0+Math.sign(dx||1)*s/W,y0+Math.sign(dy||1)*s/H]}
+  else{const L=Math.hypot(dx,dy),a=Math.round(Math.atan2(dy,dx)/(Math.PI/4))*(Math.PI/4);p=[x0+Math.cos(a)*L/W,y0+Math.sin(a)*L/H]}
+  return p.map(v=>Math.min(1,Math.max(0,v)));
+}
+function resizeRot(m,d,q,snap){   // pictures + boxes/ellipses: resize about the opposite corner/edge, or rotate with the round handle
+  const s0=d.s0,R=rect(s0),W=ov.width,H=ov.height,th=s0.rot||0,c=Math.cos(th),s=Math.sin(th),cx=(R.x+R.w/2)*W,cy=(R.y+R.h/2)*H;
+  if(d.h==='rot'){
+    let a=Math.atan2(q[1]*H-cy,q[0]*W-cx)+Math.PI/2;
+    if(snap)a=Math.round(a/(Math.PI/12))*(Math.PI/12);                       // Shift: 15° steps
+    else{const n=Math.round(a/(Math.PI/2))*(Math.PI/2);if(Math.abs(a-n)<.05)a=n}   // gentle snap to 0/90/180/270
+    m.rot=a;return}
+  const w0=R.w*W,h0=R.h*H,g={nw:[-1,-1],ne:[1,-1],sw:[-1,1],se:[1,1],n:[0,-1],s:[0,1],w:[-1,0],e:[1,0]}[d.h];
+  const flx=-g[0]*w0/2,fly=-g[1]*h0/2,fx=cx+c*flx-s*fly,fy=cy+s*flx+c*fly;    // fixed corner / edge midpoint in page px
+  const px=q[0]*W-fx,py=q[1]*H-fy,lx=c*px+s*py,ly=-s*px+c*py;                 // pointer in the mark's own frame
+  let dw=g[0]?Math.max(8,g[0]*lx):w0,dh=g[1]?Math.max(8,g[1]*ly):h0;
+  if(g[0]&&g[1]&&(m.t==='img'||snap)){const rt=w0/h0;if(dw/dh>rt)dh=dw/rt;else dw=dh*rt}   // corners keep proportions for pictures, or with Shift
+  const ox=g[0]*dw/2,oy=g[1]*dh/2,ncx=fx+c*ox-s*oy,ncy=fy+s*ox+c*oy,w=dw/W,h=dh/H;
+  setRect(m,ncx/W-w/2,ncy/H-h/2,w,h);
+}
+function rotLine(m,d,q,snap){   // rotate a line/arrow about its midpoint
+  const s0=d.s0,W=ov.width,H=ov.height,cx=(s0.x0+s0.x1)/2*W,cy=(s0.y0+s0.y1)/2*H;
+  let dl=Math.atan2(q[1]*H-cy,q[0]*W-cx)-Math.atan2(d.q0[1]*H-cy,d.q0[0]*W-cx);
+  if(snap){const b=Math.atan2((s0.y1-s0.y0)*H,(s0.x1-s0.x0)*W),st=Math.PI/12;dl=Math.round((b+dl)/st)*st-b}
+  const c=Math.cos(dl),s=Math.sin(dl),rp=(x,y)=>{const dx=x*W-cx,dy=y*H-cy;return[(cx+c*dx-s*dy)/W,(cy+s*dx+c*dy)/H]};
+  [m.x0,m.y0]=rp(s0.x0,s0.y0);[m.x1,m.y1]=rp(s0.x1,s0.y1);
+}
+function resizeMark(m,d,q,snap){
+  if(rotable(m)){resizeRot(m,d,q,snap);return}
+  const h=d.h,s0=d.s0;
+  if(isLine(m)){
+    if(h==='rot'){rotLine(m,d,q,snap);return}
+    const fx=h==='a'?s0.x1:s0.x0,fy=h==='a'?s0.y1:s0.y0,p=snap?snapPt(fx,fy,q,false):q;
+    if(h==='a'){m.x0=p[0];m.y0=p[1]}else{m.x1=p[0];m.y1=p[1]}return}
+  const b=d.b0,fx=h.includes('w')?b.x+b.w:b.x,fy=h.includes('n')?b.y+b.h:b.y;   // highlights / redaction boxes: free corner resize
+  const l=Math.min(fx,q[0]),t=Math.min(fy,q[1]);m.x=l;m.y=t;m.w=Math.max(fx,q[0])-l;m.h=Math.max(fy,q[1])-t;
+}
+function drawSel(ctx,W,H,m){
+  const k=W/ov.getBoundingClientRect().width,hs=8*k,hl=handles(m),P=h=>[h.x*W,h.y*H],rh=hl.find(h=>h.id==='rot');   // k = backing pixels per CSS pixel
+  ctx.save();ctx.strokeStyle='#2f5bea';ctx.lineWidth=1.5*k;ctx.setLineDash([6*k,4*k]);
+  if(rotable(m)){   // outline follows the rotation
+    const cs=['nw','ne','se','sw'].map(id=>P(hl.find(h=>h.id===id))),tm=[(cs[0][0]+cs[1][0])/2,(cs[0][1]+cs[1][1])/2],r=P(rh);
+    ctx.beginPath();cs.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.stroke();
+    ctx.setLineDash([]);ctx.beginPath();ctx.moveTo(tm[0],tm[1]);ctx.lineTo(r[0],r[1]);ctx.stroke();
+  }else{
+    const b=bbox(m),pad=4*k;ctx.strokeRect(b.x*W-pad,b.y*H-pad,b.w*W+2*pad,b.h*H+2*pad);ctx.setLineDash([]);
+    if(rh&&isLine(m)){const r=P(rh);ctx.beginPath();ctx.moveTo((m.x0+m.x1)/2*W,(m.y0+m.y1)/2*H);ctx.lineTo(r[0],r[1]);ctx.stroke()}
+  }
+  ctx.setLineDash([]);ctx.fillStyle='#fff';
+  hl.forEach(h=>{const[x,y]=P(h);if(h.id==='rot'){ctx.beginPath();ctx.arc(x,y,hs*.75,0,Math.PI*2);ctx.fill();ctx.stroke()}
+    else{ctx.fillRect(x-hs/2,y-hs/2,hs,hs);ctx.strokeRect(x-hs/2,y-hs/2,hs,hs)}});
+  ctx.restore();
+}
+function drawCrop(ctx,W,H,c){
+  ctx.save();ctx.fillStyle='rgba(0,0,0,.5)';ctx.beginPath();ctx.rect(0,0,W,H);
+  ctx.rect(c.x*W,c.y*H,c.w*W,c.h*H);ctx.fill('evenodd');
+  ctx.strokeStyle='#2f5bea';ctx.setLineDash([6,4]);ctx.lineWidth=2;ctx.strokeRect(c.x*W,c.y*H,c.w*W,c.h*H);ctx.restore();
+}
+function redraw(){            // cheap: paints overlay only (safe to call on every frame)
+  const W=ov.width,H=ov.height,ctx=ov.getContext('2d');ctx.clearRect(0,0,W,H);
+  const e=edits[pg];if(e)e.marks.forEach(m=>drawMark(ctx,W,H,m));
+  if(live&&live.t!=='crop')drawMark(ctx,W,H,live);
+  if(sel&&sel.n===pg&&e&&e.marks.includes(sel.m))drawSel(ctx,W,H,sel.m);
+  const c=live&&live.t==='crop'?live:(e&&e.crop);if(c)drawCrop(ctx,W,H,c);
+}
+function status(){            // buttons + counts; call after data changes, not per pointer move
+  const e=edits[pg];$('clrcrop').disabled=!(e&&e.crop);$('undo').disabled=!hist.length;$('del').disabled=!(sel&&sel.n===pg);$('rot').disabled=!(sel&&sel.n===pg&&(rotable(sel.m)||isLine(sel.m)));
+  let r=0,k=0,cr=0;Object.values(edits).forEach(x=>{x.marks.forEach(m=>m.t==='rd'?r++:k++);if(x.crop)cr++});
+  $('status').textContent=doc?`${r} redaction${r==1?'':'s'} · ${k} mark${k==1?'':'s'} · ${cr} crop${cr==1?'':'s'}`:'';
+}
+const sched=()=>{raf||(raf=requestAnimationFrame(()=>{raf=0;redraw()}))};
+
+/* ---------- page rendering + zoom ---------- */
+async function show(n){
+  const tok=++showTok;pg=n;
+  const p=await doc.getPage(n);if(tok!==showTok)return;
+  const v1=p.getViewport({scale:1}),dpr=window.devicePixelRatio||1,s=Math.min(1.8,(stage.clientWidth-24)/v1.width)*z;
+  let rs=s*dpr;const px=v1.width*v1.height*rs*rs;if(px>12e6)rs*=Math.sqrt(12e6/px);   // keep canvas within mobile memory limits
+  const v=p.getViewport({scale:rs}),buf=document.createElement('canvas');   // render off-screen, then swap in: no flicker
+  buf.width=Math.round(v.width);buf.height=Math.round(v.height);
+  if(task){try{task.cancel()}catch(_){}}
+  const t=task=p.render({canvasContext:buf.getContext('2d'),viewport:v});
+  try{await t.promise}catch(_){buf.width=buf.height=0;return}
+  if(tok!==showTok){buf.width=buf.height=0;return}
+  pdfC.width=ov.width=buf.width;pdfC.height=ov.height=buf.height;
+  pdfC.getContext('2d').drawImage(buf,0,0);buf.width=buf.height=0;
+  pdfC.style.width=ov.style.width=Math.round(v1.width*s)+'px';pdfC.style.height=ov.style.height=Math.round(v1.height*s)+'px';
+  $('pn').textContent=`${n} / ${doc.numPages}`;
+  $('prev').disabled=n<=1;$('next').disabled=n>=doc.numPages;
+  redraw();status();
+}
+const clampZ=v=>Math.min(5,Math.max(.5,v));
+async function setZoom(nz,mx,my){       // zooms around (mx,my) in client coords; latest request wins
+  if(!doc)return;
+  const r=wrap.getBoundingClientRect(),sr=stage.getBoundingClientRect();
+  if(mx==null){mx=sr.left+sr.width/2;my=sr.top+sr.height/2}
+  zPend={fx:(mx-r.left)/r.width,fy:(my-r.top)/r.height,mx,my,z:clampZ(nz)};
+  if(zBusy)return;zBusy=true;
+  try{while(zPend){const a=zPend;zPend=null;z=a.z;await show(pg);
+    const n=wrap.getBoundingClientRect();
+    stage.scrollLeft+=n.left+a.fx*n.width-a.mx;stage.scrollTop+=n.top+a.fy*n.height-a.my;
+    $('zv').textContent=Math.round(z*100)+'%'}}
+  finally{zBusy=false}
+}
+$('zi').onclick=()=>setZoom(z*1.25);$('zo').onclick=()=>setZoom(z/1.25);
+$('zf').onclick=()=>setZoom(1).then(()=>stage.scrollTo(0,0));
+stage.addEventListener('wheel',e=>{if(e.ctrlKey){e.preventDefault();setZoom(z*Math.exp(-e.deltaY/300),e.clientX,e.clientY)}},{passive:false});
+new ResizeObserver(()=>{const w=stage.clientWidth;if(doc&&lastW&&Math.abs(w-lastW)>40){lastW=w;show(pg)}else if(!lastW||Math.abs(w-lastW)>40)lastW=w}).observe(stage);
+
+/* ---------- adding pictures ---------- */
+async function addImage(f){
+  if(!doc){alert('Open a PDF first, then add pictures.');return}
+  try{
+    const url=URL.createObjectURL(f),im=new Image();im.src=url;
+    try{await im.decode()}finally{URL.revokeObjectURL(url)}
+    const iw=im.naturalWidth||300,ih=im.naturalHeight||300,k=Math.min(1,2400/Math.max(iw,ih));   // downscale huge photos to save memory
+    const c=document.createElement('canvas');c.width=Math.max(1,Math.round(iw*k));c.height=Math.max(1,Math.round(ih*k));
+    c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+    const id='i'+(++imgSeq),W=ov.width,H=ov.height,r=c.width/c.height;IMGS[id]=c;
+    let w=Math.min(.9,.3/Math.max(1,z)),h=w*W/(H*r);if(h>.9){h=.9;w=h*H*r/W}
+    const wr=wrap.getBoundingClientRect(),sr=stage.getBoundingClientRect();   // drop it in the middle of what's on screen
+    const cx=((Math.max(wr.left,sr.left)+Math.min(wr.right,sr.right))/2-wr.left)/wr.width,cy=((Math.max(wr.top,sr.top)+Math.min(wr.bottom,sr.bottom))/2-wr.top)/wr.height;
+    const m={t:'img',id,r,x:Math.min(1-w,Math.max(0,cx-w/2)),y:Math.min(1-h,Math.max(0,cy-h/2)),w,h,a:1},n=pg;
+    E(n).marks.push(m);push(n,()=>{E(n).marks.pop()});
+    $('tools').querySelector('[data-t=sel]').click();   // switch to Select so it can be moved/resized right away
+    sel={n,m};redraw();status();
+  }catch(err){alert('Could not add that picture. Try a PNG, JPG, WebP or GIF file.')}
+}
+$('imgf').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)addImage(f)};
+document.addEventListener('paste',e=>{
+  if(!doc||/^(INPUT|TEXTAREA)$/.test(e.target.tagName)||document.querySelector('dialog[open]'))return;
+  const f=[...(e.clipboardData?e.clipboardData.files:[])].find(x=>x.type.startsWith('image/'));
+  if(f){e.preventDefault();addImage(f)}
+});
+
+/* ---------- opening files ---------- */
+async function load(f){
+  if(!f)return;
+  if(doc&&f.type&&f.type.startsWith('image/')){addImage(f);return}   // dropping a picture onto an open PDF adds it
+  if(f.type&&f.type!=='application/pdf'&&!/\.pdf$/i.test(f.name)){alert('Please choose a PDF file.');return}
+  try{
+    const nd=await pdfjsLib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise;
+    if(doc)doc.destroy();
+    doc=nd;srcFile=f;name=f.name||'document.pdf';edits={};hist=[];sel=null;drag=null;IMGS={};z=1;$('zv').textContent='100%';
+    $('drop').style.display='none';wrap.style.display='block';$('exp').disabled=false;$('ie').disabled=false;$('imgb').disabled=false;
+    await show(1);
+  }catch(err){alert(err&&err.name==='PasswordException'?'This PDF is password-protected. Please unlock it first.':'Could not open that PDF: '+(err&&err.message||err))}
+}
+$('file').onchange=e=>{load(e.target.files[0]);e.target.value=''};
+const drop=$('drop');
+['dragover','dragenter'].forEach(t=>document.addEventListener(t,e=>{e.preventDefault();drop.classList.add('hot')}));
+['dragleave','drop'].forEach(t=>document.addEventListener(t,e=>{e.preventDefault();drop.classList.remove('hot')}));
+document.addEventListener('drop',e=>load(e.dataTransfer.files[0]));
+window.addEventListener('beforeunload',e=>{if(hist.length){e.preventDefault();e.returnValue=''}});
+
+/* ---------- navigation, undo ---------- */
+$('prev').onclick=()=>pg>1&&show(pg-1).then(()=>{stage.scrollTop=0});
+$('next').onclick=()=>doc&&pg<doc.numPages&&show(pg+1).then(()=>{stage.scrollTop=0});
+function undo(){sel=null;const h=hist.pop();if(!h)return;h.f();if(h.n!==pg)show(h.n);else{redraw();status()}}
+$('undo').onclick=undo;
+$('clrcrop').onclick=()=>{const n=pg,e=E(n),old=e.crop;e.crop=null;push(n,()=>{E(n).crop=old});redraw();status()};
+const helpd=$('helpd');
+$('help').onclick=()=>{const t=$('ti');if(t)t.blur();helpd.showModal?helpd.showModal():helpd.setAttribute('open','')};
+$('hx').onclick=()=>helpd.close?helpd.close():helpd.removeAttribute('open');
+helpd.addEventListener('click',e=>{if(e.target===helpd)helpd.close()});   // click the dim backdrop to close
+document.addEventListener('keydown',e=>{
+  if(document.querySelector('dialog[open]'))return;
+  if(/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName))return;
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();undo();return}
+  if((e.key==='Delete'||e.key==='Backspace')&&sel){e.preventDefault();delSel();return}
+  if(e.key==='ArrowLeft')$('prev').click();if(e.key==='ArrowRight')$('next').click();
+});
+
+/* ---------- tool options ---------- */
+const ST={hl:{c:'#ffd600',o:40},mk:{c:'#ffd600',s:18,o:40,b:'chisel'},pen:{c:'#e02020',s:3,o:100,b:'round'},shp:{c:'#e02020',s:4,o:100,b:'arrow',fill:0},txt:{c:'#d01010',s:22,f:'sans',bd:0,it:0}};
+const BR={shp:[['arrow','Arrow'],['line','Line'],['box','Box'],['ellipse','Ellipse']],pen:[['round','Round'],['calli','Calligraphy'],['dash','Dashed'],['dot','Dotted']],mk:[['chisel','Chisel'],['round','Round'],['soft','Soft'],['flat','Square']]};
+const RNG={mk:[6,60],pen:[1,20],shp:[1,20],txt:[10,60]},COL=['#e02020','#ff8a00','#ffd600','#22b14c','#1e78ff','#8e44ff','#111111','#ffffff'];
+function opts(){
+  const s=ST[tool];$('opts').style.display=s?'flex':'none';if(!s)return;
+  $('ol').textContent={hl:'Highlight',mk:'Marker',pen:'Pen',shp:'Shapes',txt:'Text'}[tool];
+  $('sw').innerHTML='';
+  COL.forEach(c=>{const b=document.createElement('button');b.className='swt'+(c===s.c?' sel':'');b.style.background=c;b.title=c;b.setAttribute('aria-label','Color '+c);b.onclick=()=>{s.c=c;opts()};$('sw').appendChild(b)});
+  $('szl').style.display=s.s?'flex':'none';
+  $('bl').style.display=s.b?'flex':'none';$('bl').childNodes[0].nodeValue=tool==='shp'?'Shape ':'Brush ';
+  $('fil').style.display=tool==='shp'&&(s.b==='box'||s.b==='ellipse')?'flex':'none';$('fi').checked=!!s.fill;
+  $('snl').style.display=tool==='shp'?'flex':'none';$('sn').checked=!!s.snap;
+  if(s.b){$('bs').innerHTML=BR[tool].map(x=>`<option value="${x[0]}"${x[0]===s.b?' selected':''}>${x[1]}</option>`).join('')}
+  $('fl').style.display=tool==='txt'?'flex':'none';
+  if(tool==='txt'){$('fs').innerHTML=Object.keys(FONTS).map(k=>`<option value="${k}"${k===s.f?' selected':''} style="font-family:${FONTS[k][1]}">${FONTS[k][0]}</option>`).join('');
+    $('bd').classList.toggle('on',!!s.bd);$('it').classList.toggle('on',!!s.it)}
+  $('opl').style.display=s.o?'flex':'none';
+  if(s.o){$('op').value=s.o;$('opv').textContent=s.o}
+  if(s.s){const g=RNG[tool];$('sz').min=g[0];$('sz').max=g[1];$('sz').value=s.s;$('szv').textContent=s.s}
+}
+$('fs').onchange=e=>{ST.txt.f=e.target.value};
+$('bd').onclick=()=>{ST.txt.bd=ST.txt.bd?0:1;opts()};
+$('it').onclick=()=>{ST.txt.it=ST.txt.it?0:1;opts()};
+$('bs').onchange=e=>{ST[tool].b=e.target.value;if(tool==='shp')opts()};
+$('sn').onchange=e=>{ST.shp.snap=e.target.checked?1:0};
+$('fi').onchange=e=>{ST.shp.fill=e.target.checked?1:0};
+$('op').oninput=e=>{ST[tool].o=+e.target.value;$('opv').textContent=e.target.value};
+$('sz').oninput=e=>{ST[tool].s=+e.target.value;$('szv').textContent=e.target.value};
+const HINTS={crop:'<b>Flatten crops</b> (checkbox next to Export): off = the crop only hides the outside area and the content stays in the file; on = cropped pages become images and everything outside the crop is permanently deleted.',sel:'Click a mark to select it. Drag it to move, drag a square handle to resize (Shift keeps proportions), and press Delete or the Delete button to remove it. Pictures and shapes also have a round handle to rotate them.'};
+$('tools').onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.t==='img'){$('imgf').click();return}const t=$('ti');if(t)t.blur();sel=null;
+  tool=b.dataset.t;[...$('tools').children].forEach(x=>x.classList.toggle('on',x===b));opts();wrap.classList.toggle('pan',tool==='pan');const hh=HINTS[tool];$('hint').innerHTML=hh||'';$('hint').style.display=hh?'block':'none';wrap.classList.toggle('selm',tool==='sel');redraw();status()};
+opts();
+
+/* ---------- pointer input (mouse, touch, pen; two fingers = pinch/pan) ---------- */
+const pt=ev=>{const r=ov.getBoundingClientRect();return[Math.min(1,Math.max(0,(ev.clientX-r.left)/r.width)),Math.min(1,Math.max(0,(ev.clientY-r.top)/r.height))]};
+function startDrag(ev,mode,m,q,h){
+  ov.setPointerCapture(ev.pointerId);
+  drag={mode,m,q0:q,h,n:pg,s0:JSON.parse(JSON.stringify(m)),b0:(m.t==='pen'||m.t==='mk'||m.t==='txt')?null:bbox(m)};
+}
+function selDown(ev,q){
+  const r=ov.getBoundingClientRect(),e=edits[pg],hr=matchMedia('(pointer:coarse)').matches?22:12;
+  if(sel&&sel.n===pg)for(const h of handles(sel.m))if(Math.hypot((q[0]-h.x)*r.width,(q[1]-h.y)*r.height)<=hr){startDrag(ev,'h',sel.m,q,h.id);return}
+  let hit=null;if(e)for(let i=e.marks.length-1;i>=0;i--)if(hitMark(e.marks[i],q)){hit=e.marks[i];break}
+  sel=hit?{n:pg,m:hit}:null;if(hit)startDrag(ev,'move',hit,q);
+  redraw();status();
+}
+function delSel(){
+  if(!sel||sel.n!==pg)return;const n=sel.n,m=sel.m,e=E(n),i=e.marks.indexOf(m);if(i<0)return;
+  e.marks.splice(i,1);push(n,()=>{E(n).marks.splice(i,0,m)});sel=null;redraw();status();
+}
+$('del').onclick=delSel;
+$('rot').onclick=()=>{
+  if(!sel||!(rotable(sel.m)||isLine(sel.m)))return;const m=sel.m,s0=JSON.parse(JSON.stringify(m));
+  if(isLine(m)){const W=ov.width,H=ov.height,cx=(m.x0+m.x1)/2*W,cy=(m.y0+m.y1)/2*H,rp=(x,y)=>[(cx-(y*H-cy))/W,(cy+(x*W-cx))/H];
+    [m.x0,m.y0]=rp(m.x0,m.y0);[m.x1,m.y1]=rp(m.x1,m.y1)}
+  else{m.rot=(m.rot||0)+Math.PI/2;if(m.rot>Math.PI*1.5)m.rot-=Math.PI*2}
+  push(sel.n,()=>{restoreMark(m,s0)});redraw();status();
+};
+function startPinch(){const[a,b]=[...ptrs.values()];live=null;start=null;if(drag){restoreMark(drag.m,drag.s0);drag=null}const t=$('ti');if(t)t.blur();
+  pinch={d0:Math.hypot(a.x-b.x,a.y-b.y)||1,z0:z,lx:(a.x+b.x)/2,ly:(a.y+b.y)/2};redraw()}
+ov.addEventListener('pointerdown',ev=>{
+  if(!doc||tool==='pan')return;
+  if(ev.pointerType==='mouse')ptrs.clear();
+  ptrs.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});
+  if(ptrs.size===2){startPinch();return}
+  if(ptrs.size>2)return;
+  const q=pt(ev);
+  if(tool==='sel'){selDown(ev,q);return}
+  if(tool==='txt'){ev.preventDefault();const t=$('ti');if(t)t.blur();textInput(ev,q);return}
+  ov.setPointerCapture(ev.pointerId);start=q;
+  const st=ST[tool]||{};
+  live=(tool==='pen'||tool==='mk')?{t:tool,p:[q],c:st.c,w:st.s/800,a:st.o/100,b:st.b}:tool==='shp'?{t:'shp',k:st.b,x0:q[0],y0:q[1],x1:q[0],y1:q[1],c:st.c,w:st.s/800,a:st.o/100,fill:st.fill}:{t:tool,x:q[0],y:q[1],w:0,h:0,c:st.c,a:st.o?st.o/100:1};
+});
+ov.addEventListener('pointermove',ev=>{
+  if(ptrs.has(ev.pointerId))ptrs.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});
+  if(pinch){if(ptrs.size<2)return;const[a,b]=[...ptrs.values()],d=Math.hypot(a.x-b.x,a.y-b.y),mx=(a.x+b.x)/2,my=(a.y+b.y)/2,nz=clampZ(pinch.z0*d/pinch.d0);
+    if(Math.abs(nz-z)>.03*z)setZoom(nz,mx,my);else{stage.scrollLeft-=mx-pinch.lx;stage.scrollTop-=my-pinch.ly}
+    pinch.lx=mx;pinch.ly=my;return}
+  if(drag){const q=pt(ev),m=drag.m;
+    if(drag.mode==='move'){restoreMark(m,JSON.parse(JSON.stringify(drag.s0)));translate(m,q[0]-drag.q0[0],q[1]-drag.q0[1])}
+    else resizeMark(m,drag,q,ev.shiftKey||(m.t==='shp'&&ST.shp.snap));
+    sched();return}
+  if(!start||!live)return;const q=pt(ev);
+  if(live.p){const l=live.p[live.p.length-1];if(Math.abs(q[0]-l[0])+Math.abs(q[1]-l[1])>.0006)live.p.push(q)}   // skip near-duplicate points
+  else if(live.t==='shp'){const p=(ev.shiftKey||ST.shp.snap)?snapPt(live.x0,live.y0,q,live.k==='box'||live.k==='ellipse'):q;live.x1=p[0];live.y1=p[1]}
+  else{live.x=Math.min(start[0],q[0]);live.y=Math.min(start[1],q[1]);live.w=Math.abs(q[0]-start[0]);live.h=Math.abs(q[1]-start[1])}
+  sched();
+});
+const endPtr=ev=>{ptrs.delete(ev.pointerId);if(pinch&&ptrs.size<2)pinch=null};
+ov.addEventListener('pointercancel',ev=>{endPtr(ev);live=null;start=null;if(drag){restoreMark(drag.m,drag.s0);drag=null}redraw()});
+ov.addEventListener('pointerup',ev=>{
+  endPtr(ev);
+  if(drag){const d=drag;drag=null;
+    if(JSON.stringify(d.m)!==JSON.stringify(d.s0))push(d.n,()=>{restoreMark(d.m,d.s0)});
+    redraw();status();return}
+  if(!start||!live)return;const m=live,n=pg,e=E(n);live=null;start=null;
+  const tiny=m.p?m.p.length<2:m.t==='shp'?Math.abs(m.x1-m.x0)+Math.abs(m.y1-m.y0)<.01:(m.w<.005||m.h<.005);
+  if(!tiny){
+    if(m.t==='crop'){const old=e.crop;e.crop={x:m.x,y:m.y,w:m.w,h:m.h};push(n,()=>{E(n).crop=old})}
+    else{e.marks.push(m);push(n,()=>{E(n).marks.pop()})}
+  }
+  redraw();status();
+});
+function textInput(ev,q){
+  const r=wrap.getBoundingClientRect(),i=document.createElement('input');i.id='ti';
+  Object.assign(i.style,{color:ST.txt.c,fontFamily:FONTS[ST.txt.f][1],fontWeight:ST.txt.bd?'bold':'normal',fontStyle:ST.txt.it?'italic':'normal',
+    fontSize:Math.max(16,ST.txt.s*r.width/800)+'px',left:(ev.clientX-r.left)+'px',top:(ev.clientY-r.top)+'px'});
+  wrap.appendChild(i);setTimeout(()=>{i.focus();try{i.scrollIntoView({block:'center',inline:'nearest'})}catch(_){}},0);
+  const n=pg,tx={t:'txt',x:q[0],y:q[1],c:ST.txt.c,w:ST.txt.s/800,f:ST.txt.f,bd:ST.txt.bd,it:ST.txt.it};
+  let done=false;const fin=ok=>{if(done)return;done=true;const s=i.value.trim();i.remove();
+    if(ok&&s){tx.s=s;E(n).marks.push(tx);push(n,()=>{E(n).marks.pop()});if(n===pg)redraw();status()}};
+  i.onkeydown=e=>{if(e.key==='Enter')fin(true);if(e.key==='Escape')fin(false)};i.onblur=()=>fin(true);
+}
+
+/* ---------- export ---------- */
+const tick=()=>new Promise(r=>setTimeout(r));
+const toBlob=(cv,type,q)=>new Promise(r=>cv.toBlob(r,type,q));
+async function renderFlat(n,S){   // page n with its marks and crop applied, as a canvas
+  const p=await doc.getPage(n),e=edits[n],c=e&&e.crop,v=p.getViewport({scale:S});
+  const cv=document.createElement('canvas');cv.width=Math.round(v.width);cv.height=Math.round(v.height);
+  const ctx=cv.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,cv.width,cv.height);
+  await p.render({canvasContext:ctx,viewport:v}).promise;
+  if(e)e.marks.forEach(m=>drawMark(ctx,cv.width,cv.height,m));
+  if(!c)return cv;
+  const o=document.createElement('canvas');o.width=Math.max(1,Math.round(c.w*cv.width));o.height=Math.max(1,Math.round(c.h*cv.height));
+  o.getContext('2d').drawImage(cv,c.x*cv.width,c.y*cv.height,c.w*cv.width,c.h*cv.height,0,0,o.width,o.height);
+  cv.width=cv.height=0;return o;
+}
+async function saveBlob(data,fn){   // inside Claude: viewer-confirmed save; elsewhere: normal browser download
+  const dl=window.claude&&claude.use?await claude.use('downloads'):null;
+  if(dl)await dl.save({filename:fn,data});
+  else{const a=document.createElement('a');a.href=URL.createObjectURL(data);a.download=fn;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4e4)}
+}
+/* minimal store-only ZIP writer (images are already compressed) */
+const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+const crc32=u=>{let c=-1;for(let i=0;i<u.length;i++)c=CRC[(c^u[i])&255]^(c>>>8);return(c^-1)>>>0};
+function makeZip(files){
+  const enc=new TextEncoder(),parts=[],cd=[],d=new Date();let off=0;
+  const time=(d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1),date=((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate();
+  for(const f of files){
+    const nm=enc.encode(f.name),crc=crc32(f.data),sz=f.data.length,h=new DataView(new ArrayBuffer(30)),c=new DataView(new ArrayBuffer(46));
+    h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x0800,true);h.setUint16(10,time,true);h.setUint16(12,date,true);
+    h.setUint32(14,crc,true);h.setUint32(18,sz,true);h.setUint32(22,sz,true);h.setUint16(26,nm.length,true);
+    c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,0x0800,true);c.setUint16(12,time,true);c.setUint16(14,date,true);
+    c.setUint32(16,crc,true);c.setUint32(20,sz,true);c.setUint32(24,sz,true);c.setUint16(28,nm.length,true);c.setUint32(42,off,true);
+    parts.push(h.buffer,nm,f.data);cd.push(c.buffer,nm);off+=30+nm.length+sz;
+  }
+  const size=cd.reduce((a,b)=>a+b.byteLength,0),e=new DataView(new ArrayBuffer(22));
+  e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,size,true);e.setUint32(16,off,true);
+  return new Blob([...parts,...cd,e.buffer],{type:'application/zip'});
+}
+/* export as PNG / JPG */
+const imgd=$('imgd');
+$('ie').onclick=()=>{
+  if(!doc)return;const t=$('ti');if(t)t.blur();
+  const o=$('ip').options;o[0].text=`Current page (${pg})`;o[1].text=`All ${doc.numPages} pages (ZIP)`;o[1].hidden=doc.numPages<2;if(doc.numPages<2)$('ip').value='cur';
+  imgd.showModal?imgd.showModal():imgd.setAttribute('open','');
+};
+$('ix').onclick=()=>imgd.close();
+imgd.addEventListener('click',e=>{if(e.target===imgd)imgd.close()});
+$('if').onchange=()=>{$('iql').style.display=$('if').value==='jpg'?'grid':'none'};
+async function exportImages(){
+  if(busy||!doc)return;busy=true;const btn=$('ig');btn.disabled=true;
+  try{
+    const jpg=$('if').value==='jpg',q=+$('iq').value,sc=+$('is').value,all=$('ip').value==='all'&&doc.numPages>1;
+    const list=all?Array.from({length:doc.numPages},(_,i)=>i+1):[pg],base=name.replace(/\.pdf$/i,''),ext=jpg?'jpg':'png',pad=String(doc.numPages).length,files=[];
+    for(let i=0;i<list.length;i++){
+      btn.textContent=list.length>1?`Exporting ${i+1}/${list.length}`:'Exporting…';await tick();
+      const v1=(await doc.getPage(list[i])).getViewport({scale:1}),S=Math.min(sc,Math.sqrt(16e6/(v1.width*v1.height)));   // cap ~16 megapixels
+      const o=await renderFlat(list[i],S),blob=await toBlob(o,jpg?'image/jpeg':'image/png',q);o.width=o.height=0;
+      if(!blob)throw new Error('That image is too large for this device. Try a smaller size.');
+      files.push({name:all?`${base}-page-${String(list[i]).padStart(pad,'0')}.${ext}`:(doc.numPages>1?`${base}-page-${list[i]}.${ext}`:`${base}.${ext}`),blob});
+    }
+    if(files.length===1)await saveBlob(files[0].blob,files[0].name);
+    else{const zf=[];for(const f of files)zf.push({name:f.name,data:new Uint8Array(await f.blob.arrayBuffer())});await saveBlob(makeZip(zf),`${base}-images.zip`)}
+    imgd.close();
+  }catch(err){if(!(err&&err.code==='declined'))alert('Image export failed: '+(err&&err.message||err))}
+  finally{busy=false;btn.disabled=false;btn.textContent='Export'}
+}
+$('ig').onclick=exportImages;
+async function exportPdf(){
+  if(busy||!doc)return;busy=true;const btn=$('exp');btn.disabled=true;
+  try{
+    const {PDFDocument}=PDFLib,src=await PDFDocument.load(await srcFile.arrayBuffer()),out=await PDFDocument.create(),fc=$('fc').checked;
+    out.setProducer('PDF Studio');out.setCreator('PDF Studio');
+    for(let n=1;n<=doc.numPages;n++){
+      btn.textContent=`Exporting ${n}/${doc.numPages}`;await tick();
+      const e=edits[n],p=await doc.getPage(n),c=e&&e.crop;
+      // pages with marks/redactions (or a flattened / rotated crop) become images; everything else is copied untouched
+      if(!((e&&e.marks.length)||(c&&(fc||p.rotate%360!==0)))){
+        const [cp]=await out.copyPages(src,[n-1]);
+        if(c){const b=cp.getCropBox();cp.setCropBox(b.x+c.x*b.width,b.y+(1-c.y-c.h)*b.height,c.w*b.width,c.h*b.height)}
+        out.addPage(cp);continue;
+      }
+      const v1=p.getViewport({scale:1}),S=Math.min(2.5,3200/Math.max(v1.width,v1.height)),k=c||{x:0,y:0,w:1,h:1};
+      const o=await renderFlat(n,S);
+      let blob=await toBlob(o,'image/png'),jpg=false;
+      if(blob.size>1.5e6){const j=await toBlob(o,'image/jpeg',.9);if(j&&j.size<blob.size*.8){blob=j;jpg=true}}   // photo-heavy pages: JPEG is much smaller
+      const buf=await blob.arrayBuffer(),img=await(jpg?out.embedJpg(buf):out.embedPng(buf));
+      o.width=o.height=0;
+      const w=k.w*v1.width,h=k.h*v1.height;out.addPage([w,h]).drawImage(img,{x:0,y:0,width:w,height:h});
+    }
+    const data=new Blob([await out.save()],{type:'application/pdf'}),fn=name.replace(/\.pdf$/i,'')+'-edited.pdf';
+    await saveBlob(data,fn);
+  }catch(err){if(!(err&&err.code==='declined'))alert('Export failed: '+(err&&err.message||err))}
+  finally{busy=false;btn.disabled=false;btn.textContent='Export PDF'}
+}
+$('exp').onclick=exportPdf;
+</script>
+</body>
+</html>
